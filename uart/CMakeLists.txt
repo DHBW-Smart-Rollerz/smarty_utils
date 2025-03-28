@@ -39,9 +39,36 @@ ament_target_dependencies(
     Boost
 )
 
+add_executable(
+  uart_subscriber
+    src/uart_subscriber.cpp
+)
+
+target_include_directories(
+  uart_subscriber 
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
+)
+
+target_compile_features(
+  uart_subscriber 
+  PUBLIC 
+    c_std_17 
+    cxx_std_20
+)
+
+ament_target_dependencies(
+  uart_subscriber 
+    rclcpp 
+    std_msgs
+    Boost
+)
+
 install(
   TARGETS 
     uart_publisher
+    uart_subscriber
   DESTINATION 
     lib/${PROJECT_NAME}
 )

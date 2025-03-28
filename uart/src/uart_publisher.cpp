@@ -2,6 +2,8 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <functional>
+#include <span>
 
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/string.hpp>
@@ -23,6 +25,10 @@ struct layout_packed(1) package {
   } payload;
   std::uint8_t checksum;
 }; // struct package
+  
+inline static constexpr auto start_byte = std::uint8_t{0x7F};
+inline static constexpr auto escape_byte = std::uint8_t{0x7D};
+inline static constexpr auto escape_mask = std::uint8_t{0x20};
 
 class uart_publisher : public rclcpp::Node {
 
@@ -34,6 +40,8 @@ public:
   : base{"uart_publisher"},
     _io_context{},
     _serial_port{_io_context} {
+    RCLCPP_INFO(base::get_logger(), "uart_publisher created");
+
     _publisher = base::create_publisher<std_msgs::msg::String>("/uart/test_value", 10u);
 
     _serial_port.open("/dev/ttyUSB0");
@@ -44,15 +52,26 @@ public:
     _serial_port.set_option(boost::asio::serial_port::parity(boost::asio::serial_port::parity::none));
     _serial_port.set_option(boost::asio::serial_port::stop_bits(boost::asio::serial_port::stop_bits::one));
 
-    boost::asio::async_read_until(_serial_port, boost::asio::dynamic_buffer(_read_buffer), 0x7E, [this](const boost::system::error_code& error_code, const std::size_t bytes_read) {
-      RCLCPP_INFO(base::get_logger(), "async_read_until uart");
-      _read_uart(error_code, bytes_read);
-    });
+    // boost::asio::async_read_until(_serial_port, boost::asio::dynamic_buffer(_read_buffer), 0x7D, [this](const boost::system::error_code& error_code, const std::size_t bytes_read) {
+    //   RCLCPP_INFO(base::get_logger(), "async_read_until uart");
+    //   _read_uart(error_code, bytes_read);
+    // });
 
-    _io_context.run();
+    // _io_context.run();
+
+    auto c = char{};
+
+    while (true) {
+      boost::asio::read(_serial_port, boost::asio::buffer(&c, 1));
+      RCLCPP_INFO(base::get_logger(), "Byte: 0x%02X", c);
+    }
   }
 
 private:
+
+  auto _echo(const boost::system::error_code& error_code, const std::size_t bytes_read) -> void {
+
+  }
 
   auto _read_uart(const boost::system::error_code& error_code, const std::size_t bytes_read) -> void {
     if (error_code) {
@@ -60,41 +79,16 @@ private:
       return;
     }
 
-    auto decoded = std::vector<std::uint8_t>{};
-    decoded.reserve(bytes_read);
-    auto need_decoding = false;
-
-    for (auto i = 0u; i < bytes_read; ++i) {
-      if (_read_buffer[i] == 0x7D) {
-        need_decoding = true;
-        continue;
-      }
-
-      if (need_decoding) {
-        decoded.push_back(_read_buffer[i] ^ 0x20);
-        need_decoding = false;
-      } else {
-        decoded.push_back(_read_buffer[i]);
+    if (bytes_read != 10u) {
+      RCLCPP_ERROR(base::get_logger(), "Error reading from UART: %lu bytes read", bytes_read);
+      for (auto i = 0u; i < bytes_read; ++i) {
+        RCLCPP_INFO(base::get_logger(), "Byte %u: %02X", i, _read_buffer[i]);
       }
     }
 
-    for (auto byte : decoded) {
-      RCLCPP_INFO(base::get_logger(), "Received test value: 0x%2x", byte);  
-    }
+    _read_buffer.clear();
 
-    RCLCPP_INFO(base::get_logger(), "========================================================");
-
-    auto package = reinterpret_cast<struct package*>(decoded.data());
-
-    auto message = std_msgs::msg::String{};
-
-    RCLCPP_INFO(base::get_logger(), "Received test value: %u", package->payload.test.value);
-
-    message.data = std::to_string(package->payload.test.value);
-
-    _publisher->publish(message);
-
-    boost::asio::async_read_until(_serial_port, boost::asio::dynamic_buffer(_read_buffer), 0x7E, [this](const boost::system::error_code& error_code, const std::size_t bytes_read) {
+    boost::asio::async_read_until(_serial_port, boost::asio::dynamic_buffer(_read_buffer), 0x7D, [this](const boost::system::error_code& error_code, const std::size_t bytes_read) {
       _read_uart(error_code, bytes_read);
     });
   }
