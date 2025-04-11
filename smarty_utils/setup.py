@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = "smarty_enums"
+package_name = "smarty_utils"
 
 setup(
     name=package_name,
@@ -14,7 +14,7 @@ setup(
     zip_safe=True,
     maintainer="Smart Rollerz",
     maintainer_email="info@dhbw-smartrollerz.org",
-    description="Contains our enums",
+    description="Contains some utilities",
     license="TODO: License declaration",
     tests_require=["pytest"],
     entry_points={
