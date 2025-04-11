@@ -11,6 +11,7 @@ find_package(ament_cmake REQUIRED)
 # further dependencies manually.
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(Boost REQUIRED)
 
 add_executable(
@@ -36,6 +37,7 @@ ament_target_dependencies(
   uart_publisher 
     rclcpp 
     std_msgs
+    geometry_msgs
     Boost
 )
 
