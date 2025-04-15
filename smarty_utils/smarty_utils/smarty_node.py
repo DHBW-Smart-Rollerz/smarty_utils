@@ -17,8 +17,8 @@ class SmartyNode(Node):
         name: str,
         package_name: str,
         node_parameters: dict[str, any] = {},
-        subscribed_topics: dict[str, tuple[any, callable]] = {},
-        published_topics: dict[str, tuple[any]] = {},
+        subscribed_topics: dict[str, tuple[any, callable, int | None]] = {},
+        published_topics: dict[str, tuple[any, int | None]] = {},
     ):
         """Initialize the SmartyNode."""
         super().__init__(name)
@@ -72,23 +72,22 @@ class SmartyNode(Node):
 
     def _init_publishers(self):
         """Initialize the publishers of the node."""
-        for key, topic_type in self.published_topics.items():
+        for key, (topic_type, qos) in self.published_topics.items():
             if key not in self.node_parameters.keys():
                 raise ValueError(f"Parameter '{key}' not found in node parameters.")
             topic_name = self.get_parameter(key).value
-            self.__setattr__(
-                key, self.create_publisher(topic_type, topic_name, QOS_PROFILE)
-            )
+            qos = QOS_PROFILE if qos is None else qos
+            self.__setattr__(key, self.create_publisher(topic_type, topic_name, qos))
 
     def _init_subscribers(self):
         """Initialize the subscribers of the node."""
-        for key, (topic_type, callback) in self.subscribed_topics.items():
+        for key, (topic_type, callback), qos in self.subscribed_topics.items():
             if key not in self.node_parameters.keys():
                 raise ValueError(f"Parameter '{key}' not found in node parameters.")
             topic_name = self.get_parameter(key).value
             self.__setattr__(
                 key,
-                self.create_subscription(topic_type, topic_name, callback, QOS_PROFILE),
+                self.create_subscription(topic_type, topic_name, callback, qos),
             )
 
     def parameter_change_callback(self, params: list[Parameter]) -> SetParametersResult:
