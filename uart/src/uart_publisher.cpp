@@ -17,12 +17,42 @@
 // usbipd list
 // usbipd attach --wsl --busid 2-9
 // colcon build && source install/setup.sh && ros2 run uart uart_publisher
+// ls /dev/ttyUSB* 2>/dev/null
 
 struct layout_packed(1) vec3 {
   std::float_t x;
   std::float_t y;
   std::float_t z;
 }; // struct vec3
+
+enum class sensor_type : std::uint8_t {
+  tof1 = 0x00,
+  tof2 = 0x01,
+  imu_gyro = 0x02,
+  imu_accel = 0x03
+}; // enum class sensor_type
+
+template<typename Type>
+auto as(std::span<std::uint8_t> buffer) -> Type* {
+  return reinterpret_cast<Type*>(buffer.data());
+}
+
+template<typename Type>
+auto as(std::span<const std::uint8_t> buffer) -> const Type* {
+  return reinterpret_cast<const Type*>(buffer.data());
+}
+
+template<typename Type, typename Underlying = std::underlying_type_t<Type>>
+requires (std::is_enum_v<Type>)
+auto from_underlying(const Underlying value) -> Type {
+  return static_cast<Type>(value);
+}
+
+template<typename Type, typename Underlying = std::underlying_type_t<Type>>
+requires (std::is_enum_v<Type>)
+auto to_underlying(const Type value) -> Underlying {
+  return static_cast<Underlying>(value);
+}
 
 class uart_publisher : public rclcpp::Node {
 
@@ -102,10 +132,6 @@ private:
             break;
           }
 
-          // if (!_decode()) {
-          //   continue;
-          // }
-
           _expected_size = _current_byte;
           
           if (_expected_size > _rx_buffer.size() - 1u) {
@@ -143,10 +169,6 @@ private:
             break;
           }
 
-          // if (!_decode()) {
-          //   continue;
-          // }
-
           if (_verify_checksum({_package_buffer.data(), _package_index}, _current_byte)) {
             _process_function({_package_buffer.data(), _expected_size});
           } else {
@@ -171,27 +193,27 @@ private:
   }
 
   auto _process_function(std::span<const std::uint8_t> buffer) -> void {
-    const auto type = buffer[0];
+    const auto type = from_underlying<sensor_type>(buffer[0]);
 
     switch (type) {
-      case 0x00: {
-        const auto* tof1 = reinterpret_cast<const std::uint16_t*>(buffer.data() + 1);
+      case sensor_type::tof1: {
+        const auto* tof1 = as<std::uint16_t>(buffer.subspan(1));
         RCLCPP_INFO(base::get_logger(), "Received type 0x00, tof1: %u", *tof1);
         auto msg = std_msgs::msg::UInt16{};
         msg.data = *tof1;
         _tof1_publisher->publish(msg);
         break;
       }
-      case 0x01: {
-        const auto* tof2 = reinterpret_cast<const std::uint16_t*>(buffer.data() + 1);
+      case sensor_type::tof2: {
+        const auto* tof2 = as<std::uint16_t>(buffer.subspan(1));
         RCLCPP_INFO(base::get_logger(), "Received type 0x01, tof2: %u", *tof2);
         auto msg = std_msgs::msg::UInt16{};
         msg.data = *tof2;
         _tof2_publisher->publish(msg);
         break;
       }
-      case 0x02: {
-        const auto* gyro = reinterpret_cast<const vec3*>(buffer.data() + 1);
+      case sensor_type::imu_gyro: {
+        const auto* gyro = as<vec3>(buffer.subspan(1));
         RCLCPP_INFO(base::get_logger(), "Received type 0x02, vec3: (%f, %f, %f)", gyro->x, gyro->y, gyro->z);
         auto msg = geometry_msgs::msg::Vector3{};
         msg.x = gyro->x;
@@ -200,8 +222,8 @@ private:
         _gyro_publisher->publish(msg);
         break;
       }
-      case 0x03: {
-        const auto* accel = reinterpret_cast<const vec3*>(buffer.data() + 1);
+      case sensor_type::imu_accel: {
+        const auto* accel = as<vec3>(buffer.subspan(1));
         RCLCPP_INFO(base::get_logger(), "Received type 0x03, vec3: (%f, %f, %f)", accel->x, accel->y, accel->z);
         auto msg = geometry_msgs::msg::Vector3{};
         msg.x = accel->x;
@@ -211,7 +233,7 @@ private:
         break;
       }
       default: {
-        RCLCPP_WARN(base::get_logger(), "Unknown type 0x%02X", type);
+        RCLCPP_WARN(base::get_logger(), "Unknown type 0x%02X", to_underlying(type));
         break;
       }
     }
