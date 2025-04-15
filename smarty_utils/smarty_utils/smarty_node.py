@@ -81,10 +81,11 @@ class SmartyNode(Node):
 
     def _init_subscribers(self):
         """Initialize the subscribers of the node."""
-        for key, (topic_type, callback), qos in self.subscribed_topics.items():
+        for key, (topic_type, callback, qos) in self.subscribed_topics.items():
             if key not in self.node_parameters.keys():
                 raise ValueError(f"Parameter '{key}' not found in node parameters.")
             topic_name = self.get_parameter(key).value
+            qos = QOS_PROFILE if qos is None else qos
             self.__setattr__(
                 key,
                 self.create_subscription(topic_type, topic_name, callback, qos),
