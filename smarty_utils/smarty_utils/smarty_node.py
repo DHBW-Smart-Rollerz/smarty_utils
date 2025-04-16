@@ -77,7 +77,10 @@ class SmartyNode(Node):
                 raise ValueError(f"Parameter '{key}' not found in node parameters.")
             topic_name = self.get_parameter(key).value
             qos = QOS_PROFILE if qos is None else qos
-            self.__setattr__(key, self.create_publisher(topic_type, topic_name, qos))
+            pub = self.create_publisher(topic_type, topic_name, qos)
+            if self._debug:
+                self.get_logger().warn(f"Publisher '{key}' [{topic_type}] created.")
+            self.__setattr__(key, pub)
 
     def _init_subscribers(self):
         """Initialize the subscribers of the node."""
@@ -86,10 +89,8 @@ class SmartyNode(Node):
                 raise ValueError(f"Parameter '{key}' not found in node parameters.")
             topic_name = self.get_parameter(key).value
             qos = QOS_PROFILE if qos is None else qos
-            self.__setattr__(
-                key,
-                self.create_subscription(topic_type, topic_name, callback, qos),
-            )
+            sub = self.create_subscription(topic_type, topic_name, callback, qos)
+            self.__setattr__(key, sub)
 
     def parameter_change_callback(self, params: list[Parameter]) -> SetParametersResult:
         """
