@@ -19,13 +19,6 @@ class NodeState(Enum):
     RESET = 2
 
 
-class Lane(Enum):
-    """Describes the goal lane of the state machine."""
-
-    RIGHT = 0
-    LEFT = 1
-
-
 class Light(Enum):
     """Enum for light states."""
 
