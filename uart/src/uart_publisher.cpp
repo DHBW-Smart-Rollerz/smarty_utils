@@ -12,55 +12,16 @@
 
 #include <boost/asio.hpp>
 
-#define layout_packed(Align) __attribute__((packed, aligned(Align)))
+#include <uart/uart.hpp>
 
 // usbipd list
 // usbipd attach --wsl --busid 2-9
 // colcon build && source install/setup.sh && ros2 run uart uart_publisher
 // ls /dev/ttyUSB* 2>/dev/null
 
-struct layout_packed(1) vec3 {
-  std::float_t x;
-  std::float_t y;
-  std::float_t z;
-}; // struct vec3
-
-enum class sensor_type : std::uint8_t {
-  tof1 = 0x00,
-  tof2 = 0x01,
-  imu_gyro = 0x02,
-  imu_accel = 0x03
-}; // enum class sensor_type
-
-template<typename Type>
-auto as(std::span<std::uint8_t> buffer) -> Type* {
-  return reinterpret_cast<Type*>(buffer.data());
-}
-
-template<typename Type>
-auto as(std::span<const std::uint8_t> buffer) -> const Type* {
-  return reinterpret_cast<const Type*>(buffer.data());
-}
-
-template<typename Type, typename Underlying = std::underlying_type_t<Type>>
-requires (std::is_enum_v<Type>)
-auto from_underlying(const Underlying value) -> Type {
-  return static_cast<Type>(value);
-}
-
-template<typename Type, typename Underlying = std::underlying_type_t<Type>>
-requires (std::is_enum_v<Type>)
-auto to_underlying(const Type value) -> Underlying {
-  return static_cast<Underlying>(value);
-}
-
 class uart_publisher : public rclcpp::Node {
 
   using base = rclcpp::Node;
-
-  inline static constexpr auto start_byte = std::uint8_t{0x7F};
-  inline static constexpr auto escape_byte = std::uint8_t{0x7D};
-  inline static constexpr auto escape_mask = std::uint8_t{0x20};
 
   inline static constexpr auto rx_buffer_size = std::uint8_t{64u};
 
@@ -74,7 +35,6 @@ class uart_publisher : public rclcpp::Node {
     _package_index{0u},
     _needs_escaping{false},
     _expected_size{0u} {
-    RCLCPP_INFO(base::get_logger(), "uart_publisher created");
 
     _tof1_publisher = base::create_publisher<std_msgs::msg::UInt16>("/tof1", 10);
     _tof2_publisher = base::create_publisher<std_msgs::msg::UInt16>("/tof2", 10);
@@ -88,6 +48,8 @@ class uart_publisher : public rclcpp::Node {
     _serial_port.set_option(boost::asio::serial_port::character_size(boost::asio::serial_port::character_size(8)));
     _serial_port.set_option(boost::asio::serial_port::parity(boost::asio::serial_port::parity::none));
     _serial_port.set_option(boost::asio::serial_port::stop_bits(boost::asio::serial_port::stop_bits::one));
+
+    RCLCPP_INFO(base::get_logger(), "uart_publisher created");
 
     while (true) {
       _update();
@@ -115,7 +77,7 @@ private:
 
       switch (_state) {
         case read_state::wait_start: {
-          if (_current_byte == start_byte) {
+          if (_current_byte == to_underlying(control_character::start)) {
             _package_index = 0u;
             _state = read_state::read_size;
           } else {
@@ -125,7 +87,7 @@ private:
           break;
         }
         case read_state::read_size: {
-          if (_current_byte == start_byte) {
+          if (_current_byte == to_underlying(control_character::start)) {
             RCLCPP_WARN(base::get_logger(), "Unexpected start byte 0x7E in read_size state");
             _state = read_state::wait_start;
 
@@ -144,15 +106,15 @@ private:
           break;
         }
         case read_state::read_payload: {
-          if (_current_byte == start_byte) {
+          if (_current_byte == to_underlying(control_character::start)) {
             RCLCPP_WARN(base::get_logger(), "Unexpected start byte 0x7F in payload");
             _state = read_state::wait_start;
             break;
           }
 
-          if (!_decode()) {
-            continue;
-          }
+          // if (!_decode()) {
+          //   continue;
+          // }
 
           _package_buffer[_package_index++] = _current_byte;
 
@@ -163,7 +125,7 @@ private:
           break;
         }
         case read_state::verify_checksum: {
-          if (_current_byte == start_byte) {
+          if (_current_byte == to_underlying(control_character::start)) {
             RCLCPP_WARN(base::get_logger(), "Unexpected start byte 0x7F in checksum");
             _state = read_state::wait_start;
             break;
@@ -251,13 +213,13 @@ private:
   }
 
   auto _decode() -> bool {
-    if (_current_byte == escape_byte) {
+    if (_current_byte == to_underlying(control_character::escape)) {
       _needs_escaping = true;
       return false;
     }
 
     if (_needs_escaping) {
-      _current_byte ^= escape_mask;
+      _current_byte ^= to_underlying(control_character::mask);
       _needs_escaping = false;
     }
 
