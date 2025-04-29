@@ -7,8 +7,10 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/string.hpp>
+#include <std_msgs/msg/u_int8.hpp>
 #include <std_msgs/msg/u_int16.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
+#include <sensor_msgs/msg/imu.hpp>
 
 #include <boost/asio.hpp>
 
@@ -25,7 +27,7 @@ class uart_publisher : public rclcpp::Node {
 
   inline static constexpr auto rx_buffer_size = std::uint8_t{64u};
 
-  public:
+public:
 
   uart_publisher()
   : base{"uart_publisher"},
@@ -36,10 +38,10 @@ class uart_publisher : public rclcpp::Node {
     _needs_escaping{false},
     _expected_size{0u} {
 
-    _tof1_publisher = base::create_publisher<std_msgs::msg::UInt16>("/tof1", 10);
-    _tof2_publisher = base::create_publisher<std_msgs::msg::UInt16>("/tof2", 10);
-    _gyro_publisher = base::create_publisher<geometry_msgs::msg::Vector3>("/gyro", 10);
-    _accel_publisher = base::create_publisher<geometry_msgs::msg::Vector3>("/accel", 10);
+    _tof1_publisher = base::create_publisher<std_msgs::msg::UInt16>("/sensor/tof/front_left", 10);
+    _tof2_publisher = base::create_publisher<std_msgs::msg::UInt16>("/sensor/tof/front_right", 10);
+    _imu_publisher = base::create_publisher<sensor_msgs::msg::Imu>("/sensor/imu", 10);
+    _drive_mode_publisher = base::create_publisher<std_msgs::msg::UInt8>("/remote/drive_mode", 10);
 
     _serial_port.open("/dev/ttyUSB0");
 
@@ -71,10 +73,6 @@ private:
     for (auto i = 0u; i < bytes_read; ++i) {
       _current_byte = _rx_buffer[i];
 
-      if (!_decode()) {
-        continue;
-      }
-
       switch (_state) {
         case read_state::wait_start: {
           if (_current_byte == to_underlying(control_character::start)) {
@@ -87,11 +85,15 @@ private:
           break;
         }
         case read_state::read_size: {
-          if (_current_byte == to_underlying(control_character::start)) {
-            RCLCPP_WARN(base::get_logger(), "Unexpected start byte 0x7E in read_size state");
-            _state = read_state::wait_start;
+          // if (_current_byte == to_underlying(control_character::start)) {
+          //   RCLCPP_WARN(base::get_logger(), "Unexpected start byte 0x7E in read_size state");
+          //   _state = read_state::wait_start;
 
-            break;
+          //   break;
+          // }
+
+          if (!_decode()) {
+            continue;
           }
 
           _expected_size = _current_byte;
@@ -112,9 +114,9 @@ private:
             break;
           }
 
-          // if (!_decode()) {
-          //   continue;
-          // }
+          if (!_decode()) {
+            continue;
+          }
 
           _package_buffer[_package_index++] = _current_byte;
 
@@ -125,10 +127,14 @@ private:
           break;
         }
         case read_state::verify_checksum: {
-          if (_current_byte == to_underlying(control_character::start)) {
-            RCLCPP_WARN(base::get_logger(), "Unexpected start byte 0x7F in checksum");
-            _state = read_state::wait_start;
-            break;
+          // if (_current_byte == to_underlying(control_character::start)) {
+          //   RCLCPP_WARN(base::get_logger(), "Unexpected start byte 0x7F in checksum");
+          //   _state = read_state::wait_start;
+          //   break;
+          // }
+
+          if (!_decode()) {
+            continue;
           }
 
           if (_verify_checksum({_package_buffer.data(), _package_index}, _current_byte)) {
@@ -174,24 +180,25 @@ private:
         _tof2_publisher->publish(msg);
         break;
       }
-      case sensor_type::imu_gyro: {
-        const auto* gyro = as<vec3>(buffer.subspan(1));
-        RCLCPP_INFO(base::get_logger(), "Received type 0x02, vec3: (%f, %f, %f)", gyro->x, gyro->y, gyro->z);
-        auto msg = geometry_msgs::msg::Vector3{};
-        msg.x = gyro->x;
-        msg.y = gyro->y;
-        msg.z = gyro->z;
-        _gyro_publisher->publish(msg);
+      case sensor_type::drive_mode: {
+        const auto* drive_mode = as<std::uint8_t>(buffer.subspan(1));
+        // RCLCPP_INFO(base::get_logger(), "Received type 0x02, vec3: (%f, %f, %f)", gyro->x, gyro->y, gyro->z);
+        auto msg = std_msgs::msg::UInt8{};
+        msg.data = *drive_mode;
+        _drive_mode_publisher->publish(msg);
         break;
       }
-      case sensor_type::imu_accel: {
-        const auto* accel = as<vec3>(buffer.subspan(1));
-        RCLCPP_INFO(base::get_logger(), "Received type 0x03, vec3: (%f, %f, %f)", accel->x, accel->y, accel->z);
-        auto msg = geometry_msgs::msg::Vector3{};
-        msg.x = accel->x;
-        msg.y = accel->y;
-        msg.z = accel->z;
-        _accel_publisher->publish(msg);
+      case sensor_type::imu: {
+        const auto* imu = as<imu_data>(buffer.subspan(1));
+        // RCLCPP_INFO(base::get_logger(), "Received type 0x03, vec3: (%f, %f, %f)", accel->x, accel->y, accel->z);
+        auto msg = sensor_msgs::msg::Imu{};
+        msg.angular_velocity.x = imu->gyro.x;
+        msg.angular_velocity.y = imu->gyro.y;
+        msg.angular_velocity.z = imu->gyro.z;
+        msg.linear_acceleration.x = imu->accel.x;
+        msg.linear_acceleration.y = imu->accel.y;
+        msg.linear_acceleration.z = imu->accel.z;
+        _imu_publisher->publish(msg);
         break;
       }
       default: {
@@ -228,8 +235,8 @@ private:
 
   rclcpp::Publisher<std_msgs::msg::UInt16>::SharedPtr _tof1_publisher;
   rclcpp::Publisher<std_msgs::msg::UInt16>::SharedPtr _tof2_publisher;
-  rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr _gyro_publisher;
-  rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr _accel_publisher;
+  rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr _imu_publisher;
+  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr _drive_mode_publisher;
 
   boost::asio::io_context _io_context;
   boost::asio::serial_port _serial_port;

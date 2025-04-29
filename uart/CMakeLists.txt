@@ -12,6 +12,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(Boost REQUIRED)
 
 add_executable(
@@ -38,6 +39,7 @@ ament_target_dependencies(
     rclcpp 
     std_msgs
     geometry_msgs
+    sensor_msgs
     Boost
 )
 
@@ -64,6 +66,8 @@ ament_target_dependencies(
   uart_subscriber 
     rclcpp 
     std_msgs
+    geometry_msgs
+    sensor_msgs
     Boost
 )
 

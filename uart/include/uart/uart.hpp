@@ -9,6 +9,7 @@
 #include <array>
 #include <vector>
 #include <span>
+#include <ranges>
 
 #include <uart/common.hpp>
 
@@ -18,11 +19,16 @@ struct layout_packed(1) vec3 {
   std::float_t z;
 }; // struct vec3
 
+struct layout_packed(1) imu_data {
+  vec3 gyro;
+  vec3 accel;
+}; // struct imu_data
+
 enum class sensor_type : std::uint8_t {
   tof1 = 0x00,
   tof2 = 0x01,
-  imu_gyro = 0x02,
-  imu_accel = 0x03
+  imu = 0x02,
+  drive_mode = 0x04
 }; // enum class actuator_type
 
 enum class actuator_type : std::uint8_t {
@@ -112,7 +118,9 @@ auto encode_buffer(std::span<const std::uint8_t> source) -> std::vector<std::uin
   auto destination = std::vector<std::uint8_t>{};
   destination.reserve(source.size() * 2u); // worst case scenario
 
-  for (const auto byte : source) {
+  auto view = source | std::views::drop(1);
+
+  for (const auto byte : view) {
     switch (byte) {
       case to_underlying(control_character::start):
       case to_underlying(control_character::escape): {
