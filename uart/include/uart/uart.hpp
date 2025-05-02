@@ -28,8 +28,9 @@ enum class sensor_type : std::uint8_t {
   tof1 = 0x00,
   tof2 = 0x01,
   imu = 0x02,
-  drive_mode = 0x04
-}; // enum class actuator_type
+  drive_mode = 0x04,
+  speed_sensor = 0x05
+}; // enum class sensor_type
 
 enum class actuator_type : std::uint8_t {
   servo = 0x00,
@@ -118,9 +119,9 @@ auto encode_buffer(std::span<const std::uint8_t> source) -> std::vector<std::uin
   auto destination = std::vector<std::uint8_t>{};
   destination.reserve(source.size() * 2u); // worst case scenario
 
-  auto view = source | std::views::drop(1);
+  destination.push_back(source[0]);
 
-  for (const auto byte : view) {
+  for (const auto byte : source.subspan(1)) {
     switch (byte) {
       case to_underlying(control_character::start):
       case to_underlying(control_character::escape): {
@@ -134,8 +135,6 @@ auto encode_buffer(std::span<const std::uint8_t> source) -> std::vector<std::uin
       }
     }
   }
-
-  destination.shrink_to_fit();
 
   return destination;
 }

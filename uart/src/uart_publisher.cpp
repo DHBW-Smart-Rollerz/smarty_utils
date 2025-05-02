@@ -9,6 +9,7 @@
 #include <std_msgs/msg/string.hpp>
 #include <std_msgs/msg/u_int8.hpp>
 #include <std_msgs/msg/u_int16.hpp>
+#include <std_msgs/msg/float32.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 
@@ -42,6 +43,7 @@ public:
     _tof2_publisher = base::create_publisher<std_msgs::msg::UInt16>("/sensor/tof/front_right", 10);
     _imu_publisher = base::create_publisher<sensor_msgs::msg::Imu>("/sensor/imu", 10);
     _drive_mode_publisher = base::create_publisher<std_msgs::msg::UInt8>("/remote/drive_mode", 10);
+    _velocity_publisher = base::create_publisher<std_msgs::msg::Float32>("/remote/velocity", 10);
 
     _serial_port.open("/dev/ttyUSB0");
 
@@ -77,6 +79,7 @@ private:
         case read_state::wait_start: {
           if (_current_byte == to_underlying(control_character::start)) {
             _package_index = 0u;
+            std::ranges::fill(_package_buffer, 0u);
             _state = read_state::read_size;
           } else {
             RCLCPP_WARN(base::get_logger(), "Unexpected byte: 0x%02X", _current_byte);
@@ -108,11 +111,11 @@ private:
           break;
         }
         case read_state::read_payload: {
-          if (_current_byte == to_underlying(control_character::start)) {
-            RCLCPP_WARN(base::get_logger(), "Unexpected start byte 0x7F in payload");
-            _state = read_state::wait_start;
-            break;
-          }
+          // if (_current_byte == to_underlying(control_character::start)) {
+          //   RCLCPP_WARN(base::get_logger(), "Unexpected start byte 0x7F in payload");
+          //   _state = read_state::wait_start;
+          //   break;
+          // }
 
           if (!_decode()) {
             continue;
@@ -182,7 +185,7 @@ private:
       }
       case sensor_type::drive_mode: {
         const auto* drive_mode = as<std::uint8_t>(buffer.subspan(1));
-        // RCLCPP_INFO(base::get_logger(), "Received type 0x02, vec3: (%f, %f, %f)", gyro->x, gyro->y, gyro->z);
+        RCLCPP_INFO(base::get_logger(), "Received type 0x04, drive_mode: %u", *drive_mode);
         auto msg = std_msgs::msg::UInt8{};
         msg.data = *drive_mode;
         _drive_mode_publisher->publish(msg);
@@ -190,7 +193,7 @@ private:
       }
       case sensor_type::imu: {
         const auto* imu = as<imu_data>(buffer.subspan(1));
-        // RCLCPP_INFO(base::get_logger(), "Received type 0x03, vec3: (%f, %f, %f)", accel->x, accel->y, accel->z);
+        RCLCPP_INFO(base::get_logger(), "Received type 0x03, vec3: (%f, %f, %f)", imu->accel.x, imu->accel.y, imu->accel.z);
         auto msg = sensor_msgs::msg::Imu{};
         msg.angular_velocity.x = imu->gyro.x;
         msg.angular_velocity.y = imu->gyro.y;
@@ -199,6 +202,14 @@ private:
         msg.linear_acceleration.y = imu->accel.y;
         msg.linear_acceleration.z = imu->accel.z;
         _imu_publisher->publish(msg);
+        break;
+      }
+      case sensor_type::speed_sensor: {
+        const auto* velocity = as<std::float_t>(buffer.subspan(1));
+        RCLCPP_INFO(base::get_logger(), "Received type 0x05, velocity: %f", *velocity);
+        auto msg = std_msgs::msg::Float32{};
+        msg.data = *velocity;
+        _velocity_publisher->publish(msg);
         break;
       }
       default: {
@@ -237,6 +248,7 @@ private:
   rclcpp::Publisher<std_msgs::msg::UInt16>::SharedPtr _tof2_publisher;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr _imu_publisher;
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr _drive_mode_publisher;
+  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr _velocity_publisher;
 
   boost::asio::io_context _io_context;
   boost::asio::serial_port _serial_port;
