@@ -53,6 +53,7 @@ class SIGNS(Enum):
     TURN_RIGHT = 16
     GIVE_WAY = 17
     PRIORITY = 18
+    PEDESTRIAN_ISLAND = 19
 
 
 class Location(Enum):
