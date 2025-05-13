@@ -44,6 +44,11 @@ class SmartyNode(Node):
         """Return the state parameter."""
         return NodeState(self.get_parameter("state").value)
 
+    @property
+    def active(self) -> bool:
+        """Return the active parameter."""
+        return self._state == NodeState.ACTIVE
+
     def reset(self) -> None:
         """Reset the node to its initial state."""
         self.get_logger().warning("⚠️ Resetting the node ...")
