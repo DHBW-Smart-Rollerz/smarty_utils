@@ -15,10 +15,6 @@ setup(
         ("share/" + package_name, ["package.xml"]),
         ("share/" + package_name, ["package.xml"]),
         *include_directory(
-            install_path=os.path.join("share", package_name, "config"),
-            source_path="config",
-        ),
-        *include_directory(
             install_path=os.path.join("share", package_name, "launch"),
             source_path="launch",
         ),
