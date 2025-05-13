@@ -59,6 +59,8 @@ class SIGNS(Enum):
 class Location(Enum):
     """Location of the object."""
 
+    LEFT_LANE = "left_lane"
+    RIGHT_LANE = "right_lane"
     LEFT = "left"
     RIGHT = "right"
     OUTSIDE = "outside"
@@ -86,5 +88,9 @@ class Location(Enum):
             return Location.BACK
         elif location == Location.BACK:
             return Location.FRONT
+        elif location == Location.LEFT_LANE:
+            return Location.RIGHT_LANE
+        elif location == Location.RIGHT_LANE:
+            return Location.LEFT_LANE
         else:
             return location
