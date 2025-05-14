@@ -70,7 +70,7 @@ class Location(Enum):
     NOT_RELEVANT = "not_relevant"
 
     @staticmethod
-    def opposite(location: "Location") -> "Location":
+    def opposite(location: "Location", out_of_lane: bool = False) -> "Location":
         """
         Get the opposite location of a given location.
 
@@ -89,8 +89,12 @@ class Location(Enum):
         elif location == Location.BACK:
             return Location.FRONT
         elif location == Location.LEFT_LANE:
+            if out_of_lane:
+                return Location.RIGHT
             return Location.RIGHT_LANE
         elif location == Location.RIGHT_LANE:
+            if out_of_lane:
+                return Location.LEFT
             return Location.LEFT_LANE
         else:
             return location
