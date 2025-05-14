@@ -1,8 +1,4 @@
-import os
-
 from setuptools import find_packages, setup
-
-from setup_utils.utils import include_directory
 
 package_name = "smarty_utils"
 
@@ -14,10 +10,6 @@ setup(
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
         ("share/" + package_name, ["package.xml"]),
-        *include_directory(
-            install_path=os.path.join("share", package_name, "launch"),
-            source_path="launch",
-        ),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
