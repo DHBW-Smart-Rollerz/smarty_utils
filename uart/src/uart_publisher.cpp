@@ -29,7 +29,6 @@ class uart_publisher : public rclcpp::Node {
   inline static constexpr auto rx_buffer_size = std::uint8_t{64u};
 
 public:
-
   uart_publisher()
   : base{"uart_publisher"},
     _io_context{},
@@ -37,7 +36,8 @@ public:
     _state{read_state::wait_start},
     _package_index{0u},
     _needs_escaping{false},
-    _expected_size{0u} {
+    _expected_size{0u}
+  {
 
     _tof1_publisher = base::create_publisher<std_msgs::msg::UInt16>("/sensor/tof/front_left", 10);
     _tof2_publisher = base::create_publisher<std_msgs::msg::UInt16>("/sensor/tof/front_right", 10);
@@ -45,13 +45,17 @@ public:
     _drive_mode_publisher = base::create_publisher<std_msgs::msg::UInt8>("/remote/drive_mode", 10);
     _velocity_publisher = base::create_publisher<std_msgs::msg::Float32>("/remote/velocity", 10);
 
-    _serial_port.open("/dev/ttyUSB0");
+    _serial_port.open("/dev/ttyUSB1");
 
     _serial_port.set_option(boost::asio::serial_port::baud_rate(115200));
-    _serial_port.set_option(boost::asio::serial_port::flow_control(boost::asio::serial_port::flow_control::none));
-    _serial_port.set_option(boost::asio::serial_port::character_size(boost::asio::serial_port::character_size(8)));
-    _serial_port.set_option(boost::asio::serial_port::parity(boost::asio::serial_port::parity::none));
-    _serial_port.set_option(boost::asio::serial_port::stop_bits(boost::asio::serial_port::stop_bits::one));
+    _serial_port.set_option(boost::asio::serial_port::flow_control(
+      boost::asio::serial_port::flow_control::none));
+    _serial_port.set_option(boost::asio::serial_port::character_size(
+      boost::asio::serial_port::character_size(8)));
+    _serial_port.set_option(boost::asio::serial_port::parity(
+      boost::asio::serial_port::parity::none));
+    _serial_port.set_option(boost::asio::serial_port::stop_bits(
+      boost::asio::serial_port::stop_bits::one));
 
     RCLCPP_INFO(base::get_logger(), "uart_publisher created");
 
@@ -61,32 +65,34 @@ public:
   }
 
 private:
-
-  enum class read_state : std::uint8_t {
+  enum class read_state : std::uint8_t
+  {
     wait_start,
     read_size,
     read_payload,
     verify_checksum
   }; // struct read_state
 
-  auto _update() -> void {
-    const auto bytes_read = boost::asio::read(_serial_port, boost::asio::buffer(_rx_buffer.data(), _rx_buffer.size()));
+  auto _update() -> void
+  {
+    const auto bytes_read = boost::asio::read(_serial_port,
+      boost::asio::buffer(_rx_buffer.data(), _rx_buffer.size()));
 
     for (auto i = 0u; i < bytes_read; ++i) {
       _current_byte = _rx_buffer[i];
 
       switch (_state) {
         case read_state::wait_start: {
-          if (_current_byte == to_underlying(control_character::start)) {
-            _package_index = 0u;
-            std::ranges::fill(_package_buffer, 0u);
-            _state = read_state::read_size;
-          } else {
-            RCLCPP_WARN(base::get_logger(), "Unexpected byte: 0x%02X", _current_byte);
-          }
+            if (_current_byte == to_underlying(control_character::start)) {
+              _package_index = 0u;
+              std::ranges::fill(_package_buffer, 0u);
+              _state = read_state::read_size;
+            } else {
+              RCLCPP_WARN(base::get_logger(), "Unexpected byte: 0x%02X", _current_byte);
+            }
 
-          break;
-        }
+            break;
+          }
         case read_state::read_size: {
           // if (_current_byte == to_underlying(control_character::start)) {
           //   RCLCPP_WARN(base::get_logger(), "Unexpected start byte 0x7E in read_size state");
@@ -95,21 +101,22 @@ private:
           //   break;
           // }
 
-          if (!_decode()) {
-            continue;
-          }
+            if (!_decode()) {
+              continue;
+            }
 
-          _expected_size = _current_byte;
-          
-          if (_expected_size > _rx_buffer.size() - 1u) {
-            RCLCPP_WARN(base::get_logger(), "Invalid size byte 0x%02X exceeds buffer size", _current_byte);
-            _state = read_state::wait_start;
-          } else {
-            _state = read_state::read_payload;
-          }
+            _expected_size = _current_byte;
 
-          break;
-        }
+            if (_expected_size > _rx_buffer.size() - 1u) {
+              RCLCPP_WARN(base::get_logger(), "Invalid size byte 0x%02X exceeds buffer size",
+              _current_byte);
+              _state = read_state::wait_start;
+            } else {
+              _state = read_state::read_payload;
+            }
+
+            break;
+          }
         case read_state::read_payload: {
           // if (_current_byte == to_underlying(control_character::start)) {
           //   RCLCPP_WARN(base::get_logger(), "Unexpected start byte 0x7F in payload");
@@ -117,18 +124,18 @@ private:
           //   break;
           // }
 
-          if (!_decode()) {
-            continue;
-          }
+            if (!_decode()) {
+              continue;
+            }
 
-          _package_buffer[_package_index++] = _current_byte;
+            _package_buffer[_package_index++] = _current_byte;
 
-          if (_package_index >= _expected_size) { 
-            _state = read_state::verify_checksum;
+            if (_package_index >= _expected_size) {
+              _state = read_state::verify_checksum;
+            }
+
+            break;
           }
-        
-          break;
-        }
         case read_state::verify_checksum: {
           // if (_current_byte == to_underlying(control_character::start)) {
           //   RCLCPP_WARN(base::get_logger(), "Unexpected start byte 0x7F in checksum");
@@ -136,24 +143,24 @@ private:
           //   break;
           // }
 
-          if (!_decode()) {
-            continue;
-          }
+            if (!_decode()) {
+              continue;
+            }
 
-          if (_verify_checksum({_package_buffer.data(), _package_index}, _current_byte)) {
-            _process_function({_package_buffer.data(), _expected_size});
-          } else {
-            RCLCPP_WARN(base::get_logger(), "Invalid checksum");
-          }
+            if (_verify_checksum({_package_buffer.data(), _package_index}, _current_byte)) {
+              _process_function({_package_buffer.data(), _expected_size});
+            } else {
+              RCLCPP_WARN(base::get_logger(), "Invalid checksum");
+            }
 
-          _state = read_state::wait_start;
-          break;
-        }
+            _state = read_state::wait_start;
+            break;
+          }
         default: {
-          RCLCPP_WARN(base::get_logger(), "Invalid state");
-          _state = read_state::wait_start;
-          break;
-        }
+            RCLCPP_WARN(base::get_logger(), "Invalid state");
+            _state = read_state::wait_start;
+            break;
+          }
       }
     }
 
@@ -163,63 +170,66 @@ private:
     }
   }
 
-  auto _process_function(std::span<const std::uint8_t> buffer) -> void {
+  auto _process_function(std::span<const std::uint8_t> buffer) -> void
+  {
     const auto type = from_underlying<sensor_type>(buffer[0]);
 
     switch (type) {
       case sensor_type::tof1: {
-        const auto* tof1 = as<std::uint16_t>(buffer.subspan(1));
-        RCLCPP_INFO(base::get_logger(), "Received type 0x00, tof1: %u", *tof1);
-        auto msg = std_msgs::msg::UInt16{};
-        msg.data = *tof1;
-        _tof1_publisher->publish(msg);
-        break;
-      }
+          const auto * tof1 = as<std::uint16_t>(buffer.subspan(1));
+          RCLCPP_INFO(base::get_logger(), "Received type 0x00, tof1: %u", *tof1);
+          auto msg = std_msgs::msg::UInt16{};
+          msg.data = *tof1;
+          _tof1_publisher->publish(msg);
+          break;
+        }
       case sensor_type::tof2: {
-        const auto* tof2 = as<std::uint16_t>(buffer.subspan(1));
-        RCLCPP_INFO(base::get_logger(), "Received type 0x01, tof2: %u", *tof2);
-        auto msg = std_msgs::msg::UInt16{};
-        msg.data = *tof2;
-        _tof2_publisher->publish(msg);
-        break;
-      }
+          const auto * tof2 = as<std::uint16_t>(buffer.subspan(1));
+          RCLCPP_INFO(base::get_logger(), "Received type 0x01, tof2: %u", *tof2);
+          auto msg = std_msgs::msg::UInt16{};
+          msg.data = *tof2;
+          _tof2_publisher->publish(msg);
+          break;
+        }
       case sensor_type::drive_mode: {
-        const auto* drive_mode = as<std::uint8_t>(buffer.subspan(1));
-        RCLCPP_INFO(base::get_logger(), "Received type 0x04, drive_mode: %u", *drive_mode);
-        auto msg = std_msgs::msg::UInt8{};
-        msg.data = *drive_mode;
-        _drive_mode_publisher->publish(msg);
-        break;
-      }
+          const auto drive_mode = as<std::uint8_t>(buffer.subspan(1));
+          RCLCPP_INFO(base::get_logger(), "Received type 0x04, drive_mode: %u", *drive_mode);
+          auto msg = std_msgs::msg::UInt8{};
+          msg.data = *drive_mode;
+          _drive_mode_publisher->publish(msg);
+          break;
+        }
       case sensor_type::imu: {
-        const auto* imu = as<imu_data>(buffer.subspan(1));
-        RCLCPP_INFO(base::get_logger(), "Received type 0x03, vec3: (%f, %f, %f)", imu->accel.x, imu->accel.y, imu->accel.z);
-        auto msg = sensor_msgs::msg::Imu{};
-        msg.angular_velocity.x = imu->gyro.x;
-        msg.angular_velocity.y = imu->gyro.y;
-        msg.angular_velocity.z = imu->gyro.z;
-        msg.linear_acceleration.x = imu->accel.x;
-        msg.linear_acceleration.y = imu->accel.y;
-        msg.linear_acceleration.z = imu->accel.z;
-        _imu_publisher->publish(msg);
-        break;
-      }
+          const auto * imu = as<imu_data>(buffer.subspan(1));
+          RCLCPP_INFO(base::get_logger(), "Received type 0x03, vec3: (%f, %f, %f)", imu->accel.x,
+          imu->accel.y, imu->accel.z);
+          auto msg = sensor_msgs::msg::Imu{};
+          msg.angular_velocity.x = imu->gyro.x;
+          msg.angular_velocity.y = imu->gyro.y;
+          msg.angular_velocity.z = imu->gyro.z;
+          msg.linear_acceleration.x = imu->accel.x;
+          msg.linear_acceleration.y = imu->accel.y;
+          msg.linear_acceleration.z = imu->accel.z;
+          _imu_publisher->publish(msg);
+          break;
+        }
       case sensor_type::speed_sensor: {
-        const auto* velocity = as<std::float_t>(buffer.subspan(1));
-        RCLCPP_INFO(base::get_logger(), "Received type 0x05, velocity: %f", *velocity);
-        auto msg = std_msgs::msg::Float32{};
-        msg.data = *velocity;
-        _velocity_publisher->publish(msg);
-        break;
-      }
+          const auto * velocity = as<std::float_t>(buffer.subspan(1));
+          RCLCPP_INFO(base::get_logger(), "Received type 0x05, velocity: %f", *velocity);
+          auto msg = std_msgs::msg::Float32{};
+          msg.data = *velocity;
+          _velocity_publisher->publish(msg);
+          break;
+        }
       default: {
-        RCLCPP_WARN(base::get_logger(), "Unknown type 0x%02X", to_underlying(type));
-        break;
-      }
+          RCLCPP_WARN(base::get_logger(), "Unknown type 0x%02X", to_underlying(type));
+          break;
+        }
     }
   }
 
-  auto _verify_checksum(std::span<const std::uint8_t> buffer, std::uint8_t checksum) -> bool {
+  auto _verify_checksum(std::span<const std::uint8_t> buffer, std::uint8_t checksum) -> bool
+  {
     // Size is part of the packages checksum
     auto calculated_checksum = static_cast<std::uint8_t>(buffer.size());
 
@@ -230,7 +240,8 @@ private:
     return calculated_checksum == checksum;
   }
 
-  auto _decode() -> bool {
+  auto _decode() -> bool
+  {
     if (_current_byte == to_underlying(control_character::escape)) {
       _needs_escaping = true;
       return false;
@@ -252,7 +263,7 @@ private:
 
   boost::asio::io_context _io_context;
   boost::asio::serial_port _serial_port;
-  
+
   read_state _state;
   std::array<std::uint8_t, rx_buffer_size> _rx_buffer;
   std::array<std::uint8_t, 32u> _package_buffer;
@@ -263,7 +274,8 @@ private:
 
 }; // class uart_publisher
 
-auto main(int argc, char** argv) -> int {
+auto main(int argc, char ** argv) -> int
+{
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<uart_publisher>());
   rclcpp::shutdown();
