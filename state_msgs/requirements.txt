@@ -1,0 +1,5 @@
+setuptools==73.0.1
+empy==3.3.4
+lark-parser
+catkin_pkg
+numpy
