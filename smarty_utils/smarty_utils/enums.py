@@ -9,6 +9,7 @@ class Nodes(Enum):
     PATH_PLANNING = "path_planning_node"
     CONTROL = "control_node"
     STATE_ESTIMATION = "state_estimation_node"
+    TRACKING = "tracking_node"
 
 
 class NodeState(Enum):
