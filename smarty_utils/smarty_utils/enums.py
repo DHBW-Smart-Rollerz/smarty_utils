@@ -130,3 +130,15 @@ class Location(Enum):
             return Location.LEFT_LANE
         else:
             return location
+
+
+class StateMachineTestModes(Enum):
+    """Test modes for the state machine."""
+
+    NORMAL = 0b00000000
+    NO_STARTBOX = 0b00000010
+
+    @staticmethod
+    def use(value: int, test_mode: "StateMachineTestModes") -> bool:
+        """Check if the test mode is active."""
+        return (value & test_mode.value) != 0
