@@ -10,6 +10,20 @@ class Nodes(Enum):
     CONTROL = "control_node"
     STATE_ESTIMATION = "state_estimation_node"
     TRACKING = "tracking_node"
+    CROSSING_DETECTION = "crossing_detection_node"
+
+
+class CrossingLineType(Enum):
+    """Types of crossing lanes."""
+
+    EGO_SOLID = 0
+    EGO_DOTTED = 1
+    OPP_SOLID = 2
+    OPP_DOTTED = 3
+    RIGHT_SOLID = 4
+    RIGHT_DOTTED = 5
+    LEFT_SOLID = 6
+    LEFT_DOTTED = 7
 
 
 class NodeState(Enum):
