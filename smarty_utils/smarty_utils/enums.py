@@ -137,8 +137,49 @@ class StateMachineTestModes(Enum):
 
     NORMAL = 0b00000000
     NO_STARTBOX = 0b00000010
+    NO_INTERSECTION = 0b00000100
+    NO_CROSSWALK = 0b00001000
+    NO_OVERTAKING = 0b00010000
+    NO_BARRED_AREA = 0b00100000
+    NO_NO_PASSING_ZONE = 0b01000000
+    FREE_DRIVE = 0b01111101
 
     @staticmethod
     def use(value: int, test_mode: "StateMachineTestModes") -> bool:
-        """Check if the test mode is active."""
-        return (value & test_mode.value) != 0
+        """
+        Check if the test mode is active.
+
+        A test mode is considered active only if all bits set in
+        `test_mode` are also set in `value` (i.e. test_mode is a subset
+        of value). This matches the intended behaviour where an empty
+        `test_mode` (0) always returns True, and specific modes require
+        their corresponding bits to be present in `value`.
+
+        Args:
+            value (int): The integer value representing the active test modes.
+            test_mode (StateMachineTestModes): The specific test mode to check.
+        """
+        return (value & test_mode.value) == test_mode.value
+
+
+if __name__ == "__main__":
+    print("Example usage of StateMachineTestModes:")
+    value = 0b110  # NO_INTERSECTION and NO_STARTBOX active
+    test_modes = [
+        (StateMachineTestModes.NORMAL, True),
+        (StateMachineTestModes.NO_STARTBOX, True),
+        (StateMachineTestModes.NO_INTERSECTION, True),
+        (StateMachineTestModes.NO_CROSSWALK, False),
+        (StateMachineTestModes.NO_OVERTAKING, False),
+        (StateMachineTestModes.NO_BARRED_AREA, False),
+        (StateMachineTestModes.NO_NO_PASSING_ZONE, False),
+        (StateMachineTestModes.FREE_DRIVE, False),
+    ]
+
+    print(f"{'Test Mode':<20}{'Set':<10}{'Expected':<10}{'Result':<10}")
+    print("-" * 50)
+    for mode, expected in test_modes:
+        result = StateMachineTestModes.use(value, mode)
+        print(
+            f"{mode.name:<20}{bool(value & mode.value):<10}{expected:<10}{result:<10}"
+        )
