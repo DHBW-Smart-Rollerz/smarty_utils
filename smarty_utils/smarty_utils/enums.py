@@ -37,18 +37,18 @@ class NodeState(Enum):
 class Light(Enum):
     """Enum for light states."""
 
-    BLINK_LEFT = 1  # 0b0100
-    BLINK_RIGHT = 2  # 0b1000
+    BLINK_LEFT = 2  # 0b0100
+    BLINK_RIGHT = 1  # 0b1000
 
     BRAKE = 0  # 0b0010
-    BLINK_LEFT_BRAKE = 1  # 0b0110
-    BLINK_RIGHT_BRAKE = 2  # 0b1010
-    BLINK_LEFT_BRAKE_NORMAL = 1  # 0b0111
-    BLINK_RIGHT_BRAKE_NORMAL = 2  # 0b1011
+    BLINK_LEFT_BRAKE = 2  # 0b0110
+    BLINK_RIGHT_BRAKE = 1  # 0b1010
+    BLINK_LEFT_BRAKE_NORMAL = 2  # 0b0111
+    BLINK_RIGHT_BRAKE_NORMAL = 1  # 0b1011
 
     NORMAL = 0  # 0b0001
-    BLINK_RIGHT_NORMAL = 2  # 0b1001
-    BLINK_LEFT_NORMAL = 1  # 0b0101
+    BLINK_RIGHT_NORMAL = 1  # 0b1001
+    BLINK_LEFT_NORMAL = 2  # 0b0101
     BRAKE_NORMAL = 0  # 0b0011
     WARN = 3
 
