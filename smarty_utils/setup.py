@@ -17,7 +17,7 @@ setup(
     maintainer_email="info@dhbw-smartrollerz.org",
     description="Contains some utilities",
     license="TODO: License declaration",
-    tests_require=["pytest"],
+    extras_require={"test": ["pytest"]},
     entry_points={
         "console_scripts": [],
     },
