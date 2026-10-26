@@ -9,10 +9,16 @@ You can use the `Timer` in three different ways: as a class, a context manager, 
 #### As a Class
 
 ```python
-timer = Timer(name="example_timer", log_on_stop=True, filter_strength=5, text="Elapsed time:", logger=print)
+timer = Timer(
+    name="example_timer",
+    log_on_stop=True,
+    filter_strength=5,
+    text="Elapsed time:",
+    logger=print,
+)
 timer.start()
 # Your code here
-#... repeat as often as needed
+# ... repeat as often as needed
 timer.stop()
 ```
 

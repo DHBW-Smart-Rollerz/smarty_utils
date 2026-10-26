@@ -1,10 +1,10 @@
-#!/usr/bin/env python3
 import collections
 import time
 from collections import deque
+from collections.abc import Callable
 from contextlib import ContextDecorator
 from dataclasses import dataclass, field
-from typing import Any, Callable, ClassVar, Dict, Optional
+from typing import ClassVar, Self
 
 
 class TimerError(Exception):
@@ -13,24 +13,26 @@ class TimerError(Exception):
 
 @dataclass
 class Timer(ContextDecorator):
-    """
-    Times the code using a class, context manager, or decorator.
+    """Times the code using a class, context manager, or decorator.
 
     Args:
-        name: optional name of the timer, required if used as context manager or decorator
-        log_on_stop: optional bool if the time should be logged directly after the measurement has finished
-        filter_strength: optional int of over how many measurements should be smoothed
+        name: optional name of the timer, required if used as context manager or
+            decorator
+        log_on_stop: optional bool if the time should be logged directly after the
+            measurement has finished
+        filter_strength: optional int of over how many measurements should be
+            smoothed
         text: optional text that should be displayed if log_on_stop is True
         logger: optional callable on which should be logged, default: print
     """
 
-    timers: ClassVar[Dict[str, collections.deque]] = dict()
-    name: Optional[str] = None
-    log_on_stop: Optional[bool] = False
-    filter_strength: Optional[int] = 1
-    text: Optional[str] = "Elapsed time for '{0}': {1:0.1f} milliseconds"
-    logger: Optional[Callable[[str], None]] = print
-    _start_time: Optional[float] = field(default=None, init=False, repr=False)
+    timers: ClassVar[dict[str, collections.deque]] = {}
+    name: str | None = None
+    log_on_stop: bool | None = False
+    filter_strength: int | None = 1
+    text: str | None = "Elapsed time for '{0}': {1:0.1f} milliseconds"
+    logger: Callable[[str], None] | None = print
+    _start_time: float | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Initialization: add timer to dict of timers."""
@@ -68,9 +70,10 @@ class Timer(ContextDecorator):
 
         return avg_time
 
-    def print(self, timers: Optional[list] = None) -> str:
-        """
-        Prints the time for all given timers. If None is passed, all timers will be reported.
+    def print(self, timers: list | None = None) -> str:
+        """Prints the time for all given timers.
+
+        If None is passed, all timers will be reported.
 
         Args:
             timers: name of the timers that should be reported
@@ -97,9 +100,10 @@ class Timer(ContextDecorator):
 
         return log
 
-    def reset(self, timers: Optional[list] = None) -> None:
-        """
-        Resets the time for all given timers. If None is passed, all timers will be reset.
+    def reset(self, timers: list | None = None) -> None:
+        """Resets the time for all given timers.
+
+        If None is passed, all timers will be reset.
 
         Args:
             timers: name of the timers that should be reset
@@ -112,11 +116,11 @@ class Timer(ContextDecorator):
         for timer_name in timers:
             self.timers[timer_name].clear()
 
-    def __enter__(self) -> "Timer":
+    def __enter__(self) -> Self:
         """Start a new timer as a context manager."""
         self.start()
         return self
 
-    def __exit__(self, *exc_info: Any) -> None:
+    def __exit__(self, *exc_info: object) -> None:
         """Stop the context manager timer."""
         self.stop()
