@@ -37,19 +37,20 @@ class NodeState(Enum):
 class Light(Enum):
     """Enum for light states."""
 
+    # Members with the same value are intentional aliases (PIE796).
     BLINK_LEFT = 2  # 0b0100
     BLINK_RIGHT = 1  # 0b1000
 
     BRAKE = 0  # 0b0010
-    BLINK_LEFT_BRAKE = 2  # 0b0110
-    BLINK_RIGHT_BRAKE = 1  # 0b1010
-    BLINK_LEFT_BRAKE_NORMAL = 2  # 0b0111
-    BLINK_RIGHT_BRAKE_NORMAL = 1  # 0b1011
+    BLINK_LEFT_BRAKE = 2  # 0b0110  # noqa: PIE796
+    BLINK_RIGHT_BRAKE = 1  # 0b1010  # noqa: PIE796
+    BLINK_LEFT_BRAKE_NORMAL = 2  # 0b0111  # noqa: PIE796
+    BLINK_RIGHT_BRAKE_NORMAL = 1  # 0b1011  # noqa: PIE796
 
-    NORMAL = 0  # 0b0001
-    BLINK_RIGHT_NORMAL = 1  # 0b1001
-    BLINK_LEFT_NORMAL = 2  # 0b0101
-    BRAKE_NORMAL = 0  # 0b0011
+    NORMAL = 0  # 0b0001  # noqa: PIE796
+    BLINK_RIGHT_NORMAL = 1  # 0b1001  # noqa: PIE796
+    BLINK_LEFT_NORMAL = 2  # 0b0101  # noqa: PIE796
+    BRAKE_NORMAL = 0  # 0b0011  # noqa: PIE796
     WARN = 3
 
     DRIVE_BACK = 0b10000
@@ -65,7 +66,7 @@ class Light(Enum):
     DRIVE_BACK_BLINK_LEFT_BRAKE_NORMAL = DRIVE_BACK | BLINK_LEFT | BRAKE | NORMAL
     DRIVE_BACK_BLINK_RIGHT_BRAKE_NORMAL = DRIVE_BACK | BLINK_RIGHT | BRAKE | NORMAL
 
-    OFF = 0
+    OFF = 0  # noqa: PIE796
 
 
 class OBJECTS(Enum):
@@ -117,34 +118,34 @@ class Location(Enum):
     NOT_RELEVANT = "not_relevant"
 
     @staticmethod
-    def opposite(location: "Location", out_of_lane: bool = False) -> "Location":
-        """
-        Get the opposite location of a given location.
+    def opposite(location: "Location", out_of_lane: bool = False) -> "Location":  # noqa: FBT002
+        """Get the opposite location of a given location.
 
-        Arguments:
-            location -- Location to get the opposite of
+        Args:
+            location: Location to get the opposite of.
+            out_of_lane: If True, the opposite of a lane is the location outside of
+                the other lane (e.g. LEFT_LANE -> RIGHT instead of RIGHT_LANE).
 
         Returns:
-            Location -- Opposite location
+            The opposite location, or the location itself if it has no opposite.
         """
-        if location == Location.LEFT:
-            return Location.RIGHT
-        elif location == Location.RIGHT:
-            return Location.LEFT
-        elif location == Location.FRONT:
-            return Location.BACK
-        elif location == Location.BACK:
-            return Location.FRONT
-        elif location == Location.LEFT_LANE:
-            if out_of_lane:
-                return Location.RIGHT
-            return Location.RIGHT_LANE
-        elif location == Location.RIGHT_LANE:
-            if out_of_lane:
-                return Location.LEFT
-            return Location.LEFT_LANE
-        else:
-            return location
+        if out_of_lane and location in _OUT_OF_LANE_OPPOSITES:
+            return _OUT_OF_LANE_OPPOSITES[location]
+        return _OPPOSITES.get(location, location)
+
+
+_OPPOSITES = {
+    Location.LEFT: Location.RIGHT,
+    Location.RIGHT: Location.LEFT,
+    Location.FRONT: Location.BACK,
+    Location.BACK: Location.FRONT,
+    Location.LEFT_LANE: Location.RIGHT_LANE,
+    Location.RIGHT_LANE: Location.LEFT_LANE,
+}
+_OUT_OF_LANE_OPPOSITES = {
+    Location.LEFT_LANE: Location.RIGHT,
+    Location.RIGHT_LANE: Location.LEFT,
+}
 
 
 class StateMachineTestModes(Enum):
@@ -161,8 +162,7 @@ class StateMachineTestModes(Enum):
 
     @staticmethod
     def use(value: int, test_mode: "StateMachineTestModes") -> bool:
-        """
-        Check if the test mode is active.
+        """Check if the test mode is active.
 
         A test mode is considered active only if all bits set in
         `test_mode` are also set in `value` (i.e. test_mode is a subset

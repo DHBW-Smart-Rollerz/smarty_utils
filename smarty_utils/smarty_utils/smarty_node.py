@@ -1,3 +1,6 @@
+from collections.abc import Callable
+from typing import Any
+
 import rclpy
 from ament_index_python import get_package_share_directory
 from rcl_interfaces.msg import SetParametersResult
@@ -16,15 +19,15 @@ class SmartyNode(Node):
         self,
         name: str,
         package_name: str,
-        node_parameters: dict[str, any] = {},
-        subscribed_topics: dict[str, tuple[any, callable, int | None]] = {},
-        published_topics: dict[str, tuple[any, int | None]] = {},
+        node_parameters: dict[str, Any] | None = None,
+        subscribed_topics: dict[str, tuple[Any, Callable, int | None]] | None = None,
+        published_topics: dict[str, tuple[Any, int | None]] | None = None,
     ):
         """Initialize the SmartyNode."""
         super().__init__(name)
-        self.node_parameters = node_parameters
-        self.subscribed_topics = subscribed_topics
-        self.published_topics = published_topics
+        self.node_parameters = {} if node_parameters is None else node_parameters
+        self.subscribed_topics = {} if subscribed_topics is None else subscribed_topics
+        self.published_topics = {} if published_topics is None else published_topics
         self.package_path = get_package_share_directory(package_name)
 
         # Init node
@@ -54,55 +57,56 @@ class SmartyNode(Node):
         self.get_logger().warning("⚠️ Resetting the node ...")
         self._reset()
         self.set_parameters([Parameter(name="state", value=NodeState.ACTIVE.value)])
-        self.get_logger().info("✅ Node reset performed. Continue with ACTIVE state ...")
+        self.get_logger().info(
+            "✅ Node reset performed. Continue with ACTIVE state ..."
+        )
 
     def _reset(self) -> None:
         """Reset the node to its initial state."""
         self.get_logger().info("Override this method to reset the node.")
 
-    def _init_parameters(self):
+    def _init_parameters(self) -> None:
         """Initialize the parameters of the node."""
         for param_name, param_value in self.node_parameters.items():
             self.declare_parameter(param_name, param_value)
 
-        if "debug" not in self.node_parameters.keys():
-            self.declare_parameter("debug", False)
+        if "debug" not in self.node_parameters:
+            self.declare_parameter("debug", value=False)
             self.node_parameters["debug"] = False
-        if "state" not in self.node_parameters.keys():
+        if "state" not in self.node_parameters:
             self.declare_parameter("state", NodeState.INACTIVE.value)
             self.node_parameters["state"] = NodeState.INACTIVE
 
         self.add_on_set_parameters_callback(self.parameter_change_callback)
         self.add_post_set_parameters_callback(self.post_parameter_change_callback)
 
-    def _init_publishers(self):
+    def _init_publishers(self) -> None:
         """Initialize the publishers of the node."""
-        for key, (topic_type, qos) in self.published_topics.items():
-            if key not in self.node_parameters.keys():
+        for key, (topic_type, topic_qos) in self.published_topics.items():
+            if key not in self.node_parameters:
                 raise ValueError(f"Parameter '{key}' not found in node parameters.")
             topic_name = self.get_parameter(key).value
-            qos = QOS_PROFILE if qos is None else qos
+            qos = QOS_PROFILE if topic_qos is None else topic_qos
             pub = self.create_publisher(topic_type, topic_name, qos)
             if self._debug:
                 self.get_logger().warn(f"Publisher '{key}' [{topic_type}] created.")
             self.__setattr__(key, pub)
 
-    def _init_subscribers(self):
+    def _init_subscribers(self) -> None:
         """Initialize the subscribers of the node."""
-        for key, (topic_type, callback, qos) in self.subscribed_topics.items():
-            if key not in self.node_parameters.keys():
+        for key, (topic_type, callback, topic_qos) in self.subscribed_topics.items():
+            if key not in self.node_parameters:
                 raise ValueError(f"Parameter '{key}' not found in node parameters.")
             topic_name = self.get_parameter(key).value
-            qos = QOS_PROFILE if qos is None else qos
+            qos = QOS_PROFILE if topic_qos is None else topic_qos
             sub = self.create_subscription(topic_type, topic_name, callback, qos)
             self.__setattr__(key, sub)
 
     def parameter_change_callback(self, params: list[Parameter]) -> SetParametersResult:
-        """
-        Callback for the parameter server.
+        """Callback for the parameter server.
 
-        Arguments:
-            params -- changed params
+        Args:
+            params: Changed parameters.
         """
         for param in params:
             if self._debug:
@@ -112,11 +116,10 @@ class SmartyNode(Node):
         return SetParametersResult(successful=True)
 
     def post_parameter_change_callback(self, params: list[Parameter]) -> None:
-        """
-        Post callback for the parameter server.
+        """Post callback for the parameter server.
 
-        Arguments:
-            params -- Parameter list
+        Args:
+            params: Changed parameters.
         """
         for param in params:
             if param.name == "state" and param.value == NodeState.RESET.value:

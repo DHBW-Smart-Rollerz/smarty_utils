@@ -16,27 +16,27 @@ find_package(sensor_msgs REQUIRED)
 find_package(Boost REQUIRED)
 
 add_executable(
-  uart_publisher 
+  uart_publisher
     src/uart_publisher.cpp
 )
 
 target_include_directories(
-  uart_publisher 
+  uart_publisher
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
 )
 
 target_compile_features(
-  uart_publisher 
-  PUBLIC 
-    c_std_17 
+  uart_publisher
+  PUBLIC
+    c_std_17
     cxx_std_20
 )
 
 ament_target_dependencies(
-  uart_publisher 
-    rclcpp 
+  uart_publisher
+    rclcpp
     std_msgs
     geometry_msgs
     sensor_msgs
@@ -49,22 +49,22 @@ add_executable(
 )
 
 target_include_directories(
-  uart_subscriber 
+  uart_subscriber
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
 )
 
 target_compile_features(
-  uart_subscriber 
-  PUBLIC 
-    c_std_17 
+  uart_subscriber
+  PUBLIC
+    c_std_17
     cxx_std_20
 )
 
 ament_target_dependencies(
-  uart_subscriber 
-    rclcpp 
+  uart_subscriber
+    rclcpp
     std_msgs
     geometry_msgs
     sensor_msgs
@@ -72,10 +72,10 @@ ament_target_dependencies(
 )
 
 install(
-  TARGETS 
+  TARGETS
     uart_publisher
     uart_subscriber
-  DESTINATION 
+  DESTINATION
     lib/${PROJECT_NAME}
 )
 
