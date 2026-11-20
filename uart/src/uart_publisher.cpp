@@ -181,7 +181,7 @@ private:
     switch (type) {
       case sensor_type::steering: {
           const auto * steering = as<std::int16_t>(buffer.subspan(1));
-          RCLCPP_INFO(base::get_logger(), "Received type 0x20, steering: %f",
+          RCLCPP_DEBUG(base::get_logger(), "Received type 0x20, steering: %d",
                     *steering);
           auto msg = std_msgs::msg::Int16{};
           msg.data = *steering;
@@ -190,7 +190,7 @@ private:
         }
       case sensor_type::velocity: {
           const auto * velocity = as<std::float_t>(buffer.subspan(1));
-          RCLCPP_INFO(base::get_logger(), "Received type 0x21, velocity: %f",
+          RCLCPP_DEBUG(base::get_logger(), "Received type 0x21, velocity: %f",
                     *velocity);
           auto msg = std_msgs::msg::Float32{};
           msg.data = *velocity;
@@ -199,7 +199,7 @@ private:
         }
       case sensor_type::imu: {
           const auto * imu = as<imu_data>(buffer.subspan(1));
-          RCLCPP_INFO(base::get_logger(), "Received type 0x22, imu: (%f, %f, %f)",
+          RCLCPP_DEBUG(base::get_logger(), "Received type 0x22, imu: (%f, %f, %f)",
                     imu->accel.x, imu->accel.y, imu->accel.z);
           auto msg = sensor_msgs::msg::Imu{};
           msg.angular_velocity.x = imu->gyro.x;
@@ -217,7 +217,7 @@ private:
         }
       case sensor_type::rc_state: {
           const auto rc_state = as<std::uint8_t>(buffer.subspan(1));
-          RCLCPP_INFO(base::get_logger(), "Received type 0x30, rc_state: %u",
+          RCLCPP_DEBUG(base::get_logger(), "Received type 0x30, rc_state: %u",
                     *rc_state);
           auto msg = std_msgs::msg::UInt8{};
           msg.data = *rc_state;
@@ -226,7 +226,7 @@ private:
         }
       case sensor_type::drive_mode: {
           const auto drive_mode = as<std::uint8_t>(buffer.subspan(1));
-          RCLCPP_INFO(base::get_logger(), "Received type 0x31, drive_mode: %u",
+          RCLCPP_DEBUG(base::get_logger(), "Received type 0x31, drive_mode: %u",
                     *drive_mode);
           auto msg = std_msgs::msg::UInt8{};
           msg.data = *drive_mode;

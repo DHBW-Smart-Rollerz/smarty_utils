@@ -5,7 +5,7 @@
 #include <std_msgs/msg/float32.hpp>
 #include <std_msgs/msg/int16.hpp>
 #include <std_msgs/msg/string.hpp>
-#include <std_msgs/msg/u_int32.hpp>
+#include <std_msgs/msg/u_int8.hpp>
 #include <string>
 #include <thread>
 #include <uart/uart.hpp>
@@ -37,6 +37,10 @@ public:
         "/control/velocity/target", 10,
         std::bind(&uart_subscriber::_motor_callback, this,
                   std::placeholders::_1));
+    _light_subscription = base::create_subscription<std_msgs::msg::UInt8>(
+        "/lights", 10,
+        std::bind(&uart_subscriber::_light_callback, this,
+                  std::placeholders::_1));
 
     // _io_context.run();
 
@@ -51,8 +55,6 @@ private:
     const auto package = serialize_package<actuator_type::servo>(msg->data);
     const auto encoded = encode_buffer(package);
 
-    // _serial_port.write_some(boost::asio::buffer(encoded.data(),
-    // encoded.size()));
     boost::asio::write(_serial_port,
                        boost::asio::buffer(encoded.data(), encoded.size()));
   }
@@ -64,14 +66,24 @@ private:
     const auto package = serialize_package<actuator_type::motor>(msg->data);
     const auto encoded = encode_buffer(package);
 
-    // _serial_port.write_some(boost::asio::buffer(buffer.data(),
-    // buffer.size()));
+    boost::asio::write(_serial_port,
+                       boost::asio::buffer(encoded.data(), encoded.size()));
+  }
+
+  auto _light_callback(std_msgs::msg::UInt8::UniquePtr msg) -> void
+  {
+    RCLCPP_INFO(base::get_logger(), "light_callback %d", msg->data);
+
+    const auto package = serialize_package<actuator_type::light>(msg->data);
+    const auto encoded = encode_buffer(package);
+
     boost::asio::write(_serial_port,
                        boost::asio::buffer(encoded.data(), encoded.size()));
   }
 
   rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr _servo_subscription;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr _motor_subscription;
+  rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr _light_subscription;
 
   boost::asio::io_context _io_context;
   boost::asio::serial_port _serial_port;
@@ -80,6 +92,8 @@ private:
 
 int main(int argc, char * argv[])
 {
+  setvbuf(stdout, NULL, _IONBF, BUFSIZ);
+
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<uart_subscriber>());
   rclcpp::shutdown();

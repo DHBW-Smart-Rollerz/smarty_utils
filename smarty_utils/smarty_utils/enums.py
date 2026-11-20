@@ -118,7 +118,7 @@ class Location(Enum):
     NOT_RELEVANT = "not_relevant"
 
     @staticmethod
-    def opposite(location: "Location", out_of_lane: bool = False) -> "Location":  # noqa: FBT002
+    def opposite(location: "Location", out_of_lane: bool = False) -> "Location":
         """Get the opposite location of a given location.
 
         Args:
@@ -175,6 +175,22 @@ class StateMachineTestModes(Enum):
             test_mode (StateMachineTestModes): The specific test mode to check.
         """
         return (value & test_mode.value) == test_mode.value
+
+
+class RemoteState(Enum):
+    """RC state sent by the embedded board (/remote/rc_state)."""
+
+    AUTONOMOUS = 0
+    RC = 1
+
+
+class DriveMode(Enum):
+    """Drive mode sent by the embedded board (/remote/drive_mode)."""
+
+    UNDEFINED = 0
+    FREE_DRIVE = 1
+    OBSTACLE = 2
+    NAVIGATION = 3
 
 
 if __name__ == "__main__":

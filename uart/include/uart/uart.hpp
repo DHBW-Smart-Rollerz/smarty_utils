@@ -64,6 +64,12 @@ struct actuator_payload<actuator_type::motor>
   using type = std::float_t;
 };  // struct actuator_payload
 
+template<>
+struct actuator_payload<actuator_type::light>
+{
+  using type = std::uint8_t;
+};  // struct actuator_payload
+
 template<actuator_type Type>
 using actuator_payload_t = typename actuator_payload<Type>::type;
 
