@@ -4,12 +4,21 @@ This package contains the custom message definitions for communication between o
 
 ## Custom Messages
 
-### EnvironmentState.msg
+### State.msg
 
-The `EnvironmentState.msg` message represents the complete state of the environment at a given moment. It includes:
+The `State.msg` message represents the complete state of the environment at a given moment. It includes:
+- `header`: The header of the newest camera image whose detections are contained in the state (see [Frame timestamps](#frame-timestamps)).
 - `tracked_objects`: An array of `TrackedObject` messages containing all currently detected and tracked objects in the environment.
 
 This message serves as a comprehensive snapshot of the surrounding environment, enabling the state machine to make informed decisions based on all detected objects.
+
+### Float32ArrayStamped.msg
+
+The stamped counterpart of `std_msgs/Float32MultiArray`, used for flat arrays computed from a camera image (object and sign detections, lane trajectories):
+- `header`: The header of the camera image the data was computed from.
+- `data`: The values (Float32[]); the layout is defined by the topic.
+
+Subscribers that only read `msg.data` of a `Float32MultiArray` work unchanged after switching the message type.
 
 ### TrackedObject.msg
 
@@ -52,3 +61,13 @@ All spatial measurements use an ego-centric coordinate frame:
 | 19 | Pedestrian Island |
 
 **Note**: The `class_id` field corresponds to the `SIGNS` enum values defined in the `smarty_utils` package.
+
+## Frame timestamps
+
+Every message computed from a camera image carries the `header` of that image. The
+camera driver is the only node that creates a stamp (`header.stamp`, capture time of the
+frame); every other node copies the header of its input message into its output message
+(`out.header = msg.header`) and never sets `self.get_clock().now()` as stamp. The stamp
+therefore identifies the camera frame a message was derived from, e.g. to find the image
+of a steering decision in a rosbag or to measure the latency of the pipeline
+(`now - msg.header.stamp`).

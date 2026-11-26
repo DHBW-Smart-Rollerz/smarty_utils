@@ -13,6 +13,7 @@ The `Lane.msg` message contains information about a single driving lane. It incl
 ### LaneDetectionResult.msg
 
 The `LaneDetectionResult.msg` message is used to represent the result of the lane detection AI solution. It includes:
+- `header`: The header of the camera image the lanes were detected in (see "Frame timestamps" in the `state_msgs` README).
 - `left`: A `Lane` message defining the left lane.
 - `center`: A `Lane` message defining the center lane.
 - `right`: A `Lane` message defining the right lane.
